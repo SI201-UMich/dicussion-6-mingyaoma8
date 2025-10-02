@@ -1,39 +1,17 @@
 import os
 import unittest
 
-
 class PollReader():
     """
     A class for reading and analyzing polling data.
     """
     def __init__(self, filename):
-        """
-        The constructor. Opens up the specified file, reads in the data,
-        closes the file handler, and sets up the data dictionary that will be
-        populated with build_data_dict().
-
-        We have implemented this for you. You should not need to modify it.
-        """
-
-        # this is used to get the base path that this Python file is in in an
-        # OS agnostic way since Windows and Mac/Linux use different formats
-        # for file paths, the os library allows us to write code that works
-        # well on any operating system
         self.base_path = os.path.abspath(os.path.dirname(__file__))
-
-        # join the base path with the passed filename
         self.full_path = os.path.join(self.base_path, filename)
-
-        # open up the file handler
         self.file_obj = open(self.full_path, 'r')
-
-        # read in each line of the file to a list
         self.raw_data = self.file_obj.readlines()
-
-        # close the file handler
         self.file_obj.close()
 
-        # set up the data dict that we will fill in later
         self.data_dict = {
             'month': [],
             'date': [],
@@ -44,74 +22,65 @@ class PollReader():
         }
 
     def build_data_dict(self):
-        """
-        Reads all of the raw data from the CSV and builds a dictionary where
-        each key is the name of a column in the CSV, and each value is a list
-        containing the data for each row under that column heading.
+        # Skip header row
+        for line in self.raw_data[1:]:
+            parts = line.strip().split(',')
+            if len(parts) != 5:
+                continue  # skip malformed lines
 
-        There may be a couple bugs in this that you will need to fix.
-        Remember that the first row of a CSV contains all of the column names,
-        and each value in a CSV is seperated by a comma.
-        """
+            month = parts[0]
+            date = int(parts[1])
+            sample_info = parts[2].split()
+            sample = int(sample_info[0])
+            sample_type = sample_info[1]
+            harris = float(parts[3])
+            trump = float(parts[4])
 
-        # iterate through each row of the data
-        for i in self.raw_data:
-
-            # split up the row by column
-            seperated = i.split(' ')
-
-            # map each part of the row to the correct column
-            self.data_dict['month'].append(seperated[0])
-            self.data_dict['date'].append(int(seperated[1]))
-            self.data_dict['sample'].append(int(seperated[2]))
-            self.data_dict['sample type'].append(seperated[2])
-            self.data_dict['Harris result'].append(float(seperated[3]))
-            self.data_dict['Trump result'].append(float(seperated[4]))
-
+            self.data_dict['month'].append(month)
+            self.data_dict['date'].append(date)
+            self.data_dict['sample'].append(sample)
+            self.data_dict['sample type'].append(sample_type)
+            self.data_dict['Harris result'].append(harris)
+            self.data_dict['Trump result'].append(trump)
 
     def highest_polling_candidate(self):
-        """
-        This method should iterate through the result columns and return
-        the name of the candidate with the highest single polling percentage
-        alongside the highest single polling percentage.
-        If equal, return the highest single polling percentage and "EVEN".
+        max_harris = max(self.data_dict['Harris result'])
+        max_trump = max(self.data_dict['Trump result'])
 
-        Returns:
-            str: A string indicating the candidate with the highest polling percentage or EVEN,
-             and the highest polling percentage.
-        """
-        pass
-
+        if max_harris > max_trump:
+            return f"Harris: {max_harris:.1%}"
+        elif max_trump > max_harris:
+            return f"Trump: {max_trump:.1%}"
+        else:
+            return f"EVEN: {max_harris:.1%}"
 
     def likely_voter_polling_average(self):
-        """
-        Calculate the average polling percentage for each candidate among likely voters.
+        harris_total = 0
+        trump_total = 0
+        count = 0
 
-        Returns:
-            tuple: A tuple containing the average polling percentages for Harris and Trump
-                   among likely voters, in that order.
-        """
-        pass
+        for i in range(len(self.data_dict['sample type'])):
+            if self.data_dict['sample type'][i] == 'LV':
+                harris_total += self.data_dict['Harris result'][i]
+                trump_total += self.data_dict['Trump result'][i]
+                count += 1
 
+        harris_avg = harris_total / count
+        trump_avg = trump_total / count
+        return (harris_avg, trump_avg)
 
     def polling_history_change(self):
-        """
-        Calculate the change in polling averages between the earliest and latest polls.
+        harris_early = self.data_dict['Harris result'][:30]
+        trump_early = self.data_dict['Trump result'][:30]
+        harris_late = self.data_dict['Harris result'][-30:]
+        trump_late = self.data_dict['Trump result'][-30:]
 
-        This method calculates the average result for each candidate in the earliest 30 polls
-        and the latest 30 polls, then returns the net change.
+        harris_change = (sum(harris_late) / 30) - (sum(harris_early) / 30)
+        trump_change = (sum(trump_late) / 30) - (sum(trump_early) / 30)
 
-        Returns:
-            tuple: A tuple containing the net change for Harris and Trump, in that order.
-                   Positive values indicate an increase, negative values indicate a decrease.
-        """
-        pass
-
+        return (harris_change, trump_change)
 
 class TestPollReader(unittest.TestCase):
-    """
-    Test cases for the PollReader class.
-    """
     def setUp(self):
         self.poll_reader = PollReader('polling_data.csv')
         self.poll_reader.build_data_dict()
@@ -144,7 +113,6 @@ class TestPollReader(unittest.TestCase):
         self.assertTrue(f"{harris_change:+.2%}" == "+1.53%")
         self.assertTrue(f"{trump_change:+.2%}" == "+2.07%")
 
-
 def main():
     poll_reader = PollReader('polling_data.csv')
     poll_reader.build_data_dict()
@@ -161,8 +129,6 @@ def main():
     print(f"Polling History Change:")
     print(f"  Harris: {harris_change:+.2%}")
     print(f"  Trump: {trump_change:+.2%}")
-
-
 
 if __name__ == '__main__':
     main()
